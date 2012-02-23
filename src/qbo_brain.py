@@ -149,7 +149,7 @@ class default(CommonQboState):
         #Stereo Selector
         rospy.Subscriber("/qbo_stereo_selector/object", Image, stereo_selector_callback)    
         #Face Tracking
-        rospy.Subscriber("/qbo_face_tracking/face_pos_and_size", FacePosAndDist, face_pos_callback)
+        rospy.Subscriber("/qbo_face_tracking/face_pos_and_dist", FacePosAndDist, face_pos_callback)
         
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
