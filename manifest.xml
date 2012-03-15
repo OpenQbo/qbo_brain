@@ -5,7 +5,7 @@
 
   </description>
   <author>Arturo Bajuelos</author>
-  <license>BSD</license>
+  <license>GPLv2</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/qbo_brain</url>
   <depend package="rospy"/>
