@@ -12,7 +12,7 @@
   <depend package="qbo_listen"/>
   <depend package="sensor_msgs"/>
   <depend package="qbo_talk"/>
-  <depend package="qbo_face_tracking"/>
+  <depend package="qbo_face_msgs"/>
   <depend package="smach_ros" />
   <depend package="smach" />
 </package>
