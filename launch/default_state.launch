@@ -3,7 +3,7 @@
 <!-- OBJECT RECOGNIZER DEMO -->
 
 	 <node name="qbo_stereo_selector" pkg="qbo_stereo_selector" type="qbo_stereo_selector">
-<!-- 	 <param name="/stereo_selector/move_head" value="false"/> -->
+<!-- 	 <param name="/qbo_stereo_selector/move_head" value="false"/> -->
 
           <param name="distance_filter_threshold" value="0.6" />
 

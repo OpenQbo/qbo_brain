@@ -262,8 +262,9 @@ def main():
     rospy.init_node("qbo_brain")
     rospy.loginfo("Starting Qbo Brain")
     
-    client_speak = rospy.ServiceProxy("/qbo_talk/festival_say", Text2Speach)
-    rospy.wait_for_service('/qbo_talk/festival_say')
+    client_speak = rospy.ServiceProxy("/qbo_talk/festival_say_no_wait", Text2Speach)
+    rospy.loginfo("Waiting for the qbo_talk service to be active")
+    rospy.wait_for_service('/qbo_talk/festival_say_no_wait')
     
     #Initialize robot model
     robot_model = RobotModel()
