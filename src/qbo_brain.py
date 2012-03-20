@@ -30,7 +30,7 @@ from qbo_listen.msg import Listened
 from qbo_talk.srv import Text2Speach
 
 from sensor_msgs.msg import Image
-from qbo_face_tracking.msg import FacePosAndDist
+from qbo_face_msgs.msg import FacePosAndDist
 
 import smach
 import smach_ros
@@ -262,8 +262,8 @@ def main():
     rospy.init_node("qbo_brain")
     rospy.loginfo("Starting Qbo Brain")
     
-    client_speak = rospy.ServiceProxy("/Qbo/festivalSay", Text2Speach)
-    rospy.wait_for_service('/Qbo/festivalSay')
+    client_speak = rospy.ServiceProxy("/qbo_talk/festival_say", Text2Speach)
+    rospy.wait_for_service('/qbo_talk/festival_say')
     
     #Initialize robot model
     robot_model = RobotModel()
