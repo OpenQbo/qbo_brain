@@ -9,10 +9,10 @@
 
 	 </node>
 
-	 <node name="orbit_client" pkg="object_recognizer" type="orbit_client" />
-	<param name="/object_recognizer/input_image_topic" value="/qbo_stereo_selector/object"/> 
+	 <node name="orbit_client" pkg="qbo_object_recognition" type="orbit_client" />
+	<param name="/qbo_object_recognition/input_image_topic" value="/qbo_stereo_selector/object"/> 
 	 
-<node name="orbit_demo" pkg="object_recognizer" type="orbit_demo" output="screen" />
+<node name="orbit_demo" pkg="qbo_object_recognition" type="orbit_demo" output="screen" />
 	 
 <!-- FACE RECOGNIZER DEMO -->
 
@@ -48,8 +48,6 @@
 	<!-- Face Recognition node to recognize faces -->
 	 <node name="qbo_face_recognition" pkg="qbo_face_recognition" type="qbo_face_recognition" >
 	 </node>
-	<!-- <param name="/qbo_face_recognition/faces_path" value="/opt/qbo/ros_stacks/qbo_apps/qbo_face_recognition/faces/faces_db" /> -->
-	<!-- <param name="/qbo_face_recognition/uptate_path" value="/opt/qbo/ros_stacks/qbo_apps/qbo_face_recognition/faces/new_faces" /> -->
 	<!-- <param name="/qbo_face_recognition/recognition_type" value="1" /> -->       
 	 <param name="/qbo_face_recognition/stabilizer_threshold" value="16" />
 	 <param name="/qbo_face_recognition/stabilizer_max" value="20" /> 
