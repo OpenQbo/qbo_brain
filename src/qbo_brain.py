@@ -185,7 +185,7 @@ class musicplayer(CommonQboState):
         
 class phone(CommonQboState):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['stop','exit'.''])
+        smach.State.__init__(self, outcomes=['stop','exit',''])
         self.state="Phone services"
         self.input_values={"STOP PHONE SERVICES":"stop", "STOP STATE MACHINE":"exit"}
         self.launchers=["roslaunch qbo_http_api_login phone_services.launch"]
@@ -276,12 +276,11 @@ def main():
     sm = smach.StateMachine(outcomes=['exit'])
 
     with sm:
-        smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver', '':'finish_state_machine'})
-        smach.StateMachine.add('music_player', musicplayer(), transitions={'stop':'default', 'phone':'phoneserver', '':'finish_state_machine'})
-        smach.StateMachine.add('phoneserver', phone(), transitions={'stop':'default', '':'finish_state_machine'})
-    
-    
-    
+        smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver', '':'exit'})
+        smach.StateMachine.add('music_player', musicplayer(), transitions={'stop':'default', 'phone':'phoneserver', '':'exit'})
+        smach.StateMachine.add('phoneserver', phone(), transitions={'stop':'default', '':'exit'})
+
+
     sis= smach_ros.IntrospectionServer('server_name',sm,'/SM_ROOT')
     sis.start()
 
@@ -291,7 +290,7 @@ def main():
     rospy.loginfo("State machine launched")
     outcome = sm.execute()
     rospy.loginfo('Finishing state machine')
-#    rospy.spin()
+    rospy.spin()
     sis.stop()
     
 if __name__ == '__main__':
