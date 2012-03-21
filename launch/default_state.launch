@@ -1,13 +1,11 @@
 <launch>
 
-<!--       <include file="$(find qbo_arduqbo)/launch/qbo_with_sensors.launch" /> -->
-
 <!-- OBJECT RECOGNIZER DEMO -->
 
-	 <node name="qbo_stereo_selector" pkg="qbo_stereo_selector" type="qbo_stereo_selector">
+	 <node name="qbo_stereo_selector" pkg="qbo_stereo_selector" type="qbo_stereo_selector" >
 
 
-          <param name="distance_filter_threshold" value="0.6" />
+          <param name="distance_filter_threshold" value="0.53" />
 
 	 </node>
 
@@ -15,9 +13,10 @@
 
 
 	 <node name="orbit_client" pkg="qbo_object_recognition" type="orbit_client" />
-	<param name="/qbo_object_recognition/input_image_topic" value="/qbo_stereo_selector/object"/> 
 	 
-<node name="orbit_demo" pkg="qbo_object_recognition" type="orbit_demo" output="screen" />
+          <param name="/qbo_object_recognition/input_image_topic" value="/qbo_stereo_selector/object"/> 
+	 
+         <node name="orbit_demo" pkg="qbo_object_recognition" type="orbit_demo" output="screen" />
 	 
 <!-- FACE RECOGNIZER DEMO -->
 

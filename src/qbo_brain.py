@@ -236,10 +236,8 @@ def check_face_object_balance():
    
     if rospy.has_param("/qbo_stereo_selector/move_head"):
         object_active = rospy.get_param("/qbo_stereo_selector/move_head")
-#	print "OBJECT RECOGNITION MODE"
     else:
         object_active = False
-#        print "FACE RECOGNITION MODE"
 
     if object_active and diff_time.to_sec()>robot_model.time_threshold:
         #Need to activate face mode
