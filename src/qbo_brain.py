@@ -131,7 +131,7 @@ class CommonQboState(smach.State):
 #Define default state
 class default(CommonQboState):
     def __init__(self):
-        smach.State.__init__(self, outcomes=["mplayer","phone"])
+        smach.State.__init__(self, outcomes=['mplayer','phone',''])
         self.state="Default"
         self.input_values={"RUN MUSIC PLAYER":"mplayer", "RUN PHONE SERVICES":"phone"}
         self.launchers=["roslaunch qbo_brain default_state.launch"]
@@ -162,7 +162,7 @@ class default(CommonQboState):
 
 class musicplayer(CommonQboState):
     def __init__(self):
-        smach.State.__init__(self, outcomes=["stop","phone"])
+        smach.State.__init__(self, outcomes=['stop','phone', ''])
         self.state="Music Player"
         self.input_values={"STOP MUSIC PLAYER":"stop", "START PHONE SERVICES":"phone","STOP STATE MACHINE":"exit"}
         self.launchers=["roslaunch qbo_music_player hand_gesture_node.launch"]
@@ -185,7 +185,7 @@ class musicplayer(CommonQboState):
         
 class phone(CommonQboState):
     def __init__(self):
-        smach.State.__init__(self, outcomes=["stop","exit"])
+        smach.State.__init__(self, outcomes=['stop','exit'.''])
         self.state="Phone services"
         self.input_values={"STOP PHONE SERVICES":"stop", "STOP STATE MACHINE":"exit"}
         self.launchers=["roslaunch qbo_http_api_login phone_services.launch"]
@@ -276,9 +276,9 @@ def main():
     sm = smach.StateMachine(outcomes=['exit'])
 
     with sm:
-        smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver'})
-        smach.StateMachine.add('music_player', musicplayer(), transitions={'stop':'default', 'phone':'phoneserver'})
-        smach.StateMachine.add('phoneserver', phone(), transitions={'stop':'default'})
+        smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver', '':'finish_state_machine'})
+        smach.StateMachine.add('music_player', musicplayer(), transitions={'stop':'default', 'phone':'phoneserver', '':'finish_state_machine'})
+        smach.StateMachine.add('phoneserver', phone(), transitions={'stop':'default', '':'finish_state_machine'})
     
     
     
