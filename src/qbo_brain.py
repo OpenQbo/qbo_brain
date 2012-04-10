@@ -2,7 +2,7 @@
 #
 # Software License Agreement (GPLv2 License)
 #
-# Copyright (c) 2011 OpenQbo, Inc.
+# Copyright (c) 2011 Thecorpora, S.L.
 #
 # This program is free software; you can redistribute it and/or 
 # modify it under the terms of the GNU General Public License as 
@@ -188,13 +188,14 @@ class phone(CommonQboState):
         smach.State.__init__(self, outcomes=['stop','exit',''])
         self.state="Phone services"
         self.input_values={"STOP PHONE SERVICES":"stop", "STOP STATE MACHINE":"exit"}
-        self.launchers=["roslaunch qbo_http_api_login phone_services.launch"]
+        #self.launchers=["roslaunch qbo_http_api_login phone_services.launch"]
+        self.launchers=["rosrun qbo_http_api_login qbo_http_api_login.py > /home/qboblue/http_log.txt", "rosrun qbo_mjpeg_server mjpeg_server"]
 
     def execute(self, userdata): 
         rospy.loginfo('Executing state'+self.state)
         self.next_state=""
         pids=run_all_process(self.launchers)
-        run_process("roslaunch qbo_audio_control audio_control_sip.launch")
+        #run_process("roslaunch qbo_audio_control audio_control_sip.launch")
         subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
    
 
@@ -209,7 +210,7 @@ class phone(CommonQboState):
 	subscribe.unregister()
         kill_all_process(pids)
         rospy.loginfo("NextState:"+self.next_state)
-        run_process("roslaunch qbo_audio_control audio_control_listener.launch")
+        #run_process("roslaunch qbo_audio_control audio_control_listener.launch")
         return self.next_state
 
 def stereo_selector_callback(data):

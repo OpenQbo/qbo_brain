@@ -16,7 +16,7 @@
 	 
           <param name="/qbo_object_recognition/input_image_topic" value="/qbo_stereo_selector/object"/> 
 	 
-         <node name="orbit_demo" pkg="qbo_object_recognition" type="orbit_demo" output="screen" />
+         <node name="orbit_demo" pkg="qbo_object_recognition" type="orbit_demo"/>
 	 
 <!-- FACE RECOGNIZER DEMO -->
 
@@ -65,15 +65,17 @@
 	<!-- <param name="/qbo_face_recognition/pca_image_width" value="100" /> -->
 	
 	<!-- Face Recognition Demo to answer questions and to learn faces -->
-	<node name="qbo_face_recognition_demo" pkg="qbo_face_recognition" type="face_recognizer_demo">
+	<node name="qbo_face_recognition_demo" pkg="qbo_face_recognition" type="face_recognizer_demo" output="screen" >
 	 </node>
 	 <param name="/qbo_face_recognition_demo/num_images_to_hold" value="20" />
 	 <param name="/qbo_face_recognition_demo/wait_for_name_tolerance" value="4.0" />
 
 
 <!-- QBO CHATTER -->
-	<node name="qbo_questions" pkg="qbo_questions" type="questions.py" output="screen" />
+	<node name="qbo_questions" pkg="qbo_questions" type="questions.py" />
 	<node name="qbo_system_info" pkg="qbo_system_info" type="plugin_system.py" />
+	
+        <node name="qbo_expression" pkg="qbo_expression" type="qbo_expression.py" />
 
 </launch>
 
