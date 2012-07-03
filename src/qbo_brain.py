@@ -55,7 +55,7 @@ def run_process(command = ""):
 def run_all_process(all_commands):
     proc=[]
     for command in all_commands:
-	proc.append(subprocess.Popen(command.split()))
+        proc.append(subprocess.Popen(command.split()))
     return proc
 
 def kill_all_process(processes):
@@ -71,8 +71,8 @@ class RobotModel:
     def __init__(self):
         self.last_object_time = rospy.Time.now()
         self.time_threshold = 0.4
-	self.random_move = False
-	self.follow_face = False
+        self.random_move = False
+        self.follow_face = False
 
 class CommonQboState(smach.State):
     def __init__(self):
@@ -85,42 +85,42 @@ class CommonQboState(smach.State):
     def listen_callback(self, data):
         sentence = data.msg
         rospy.loginfo("Listened: |"+sentence+"|")
-	global robot_model
-	global face_detected
+        global robot_model
+        global face_detected
        
 
 
-	if self.state=="Default" and sentence == "HALT YOU MOVE":
-		
-		if robot_model.random_move:
-			run_process("rosnode kill /qbo_random_move")
-			robot_model.random_move = False
-		
-		rospy.set_param("/qbo_face_following/move_base", False)
-		rospy.follow_face = False
-		speak_this("Ok. I stopped moving.")
-		return
+        if self.state=="Default" and sentence == "HALT YOU MOVE":
+                
+                if robot_model.random_move:
+                        run_process("rosnode kill /qbo_random_move")
+                        robot_model.random_move = False
+                
+                rospy.set_param("/qbo_face_following/move_base", False)
+                rospy.follow_face = False
+                speak_this("Ok. I stopped moving.")
+                return
  
         if self.state=="Default" and not face_detected:
-		print "IGNORING PREVIOUS SENTENCE"
-		return
+                print "IGNORING PREVIOUS SENTENCE"
+                return
 
-	
-	if self.state=="Default" and sentence == "WHY DON'T YOU MOVE A ROUND" and not robot_model.random_move:
- 		run_process("rosrun qbo_random_move qbo_random_move_face_recog.py")
-		robot_model.random_move = True
-		speak_this("OK. I'm taking a walk")
-	
+        
+        if self.state=="Default" and sentence == "WHY DON'T YOU MOVE A ROUND" and not robot_model.random_move:
+                run_process("rosrun qbo_random_move qbo_random_move_face_recog.py")
+                robot_model.random_move = True
+                speak_this("OK. I'm taking a walk")
+        
 
-	elif self.state == "Default" and sentence == "CAN YOU FOLLOW ME" and not robot_model.follow_face:
-		if robot_model.random_move:
-			run_process("rosnode kill /qbo_random_move")
-                	robot_model.random_move = False
-		
-		speak_this("Yes, I can follow you")
-		rospy.follow_face = True
-		rospy.set_param("/qbo_face_following/move_base", True)
-			
+        elif self.state == "Default" and sentence == "CAN YOU FOLLOW ME" and not robot_model.follow_face:
+                if robot_model.random_move:
+                        run_process("rosnode kill /qbo_random_move")
+                        robot_model.random_move = False
+                
+                speak_this("Yes, I can follow you")
+                rospy.follow_face = True
+                rospy.set_param("/qbo_face_following/move_base", True)
+                        
 
 
         try:
@@ -131,9 +131,9 @@ class CommonQboState(smach.State):
 #Define default state
 class default(CommonQboState):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['mplayer','phone',''])
+        smach.State.__init__(self, outcomes=['mplayer','phone','questions',''])
         self.state="Default"
-        self.input_values={"RUN MUSIC PLAYER":"mplayer", "RUN PHONE SERVICES":"phone"}
+        self.input_values={"RUN MUSIC PLAYER":"mplayer", "RUN PHONE SERVICES":"phone", "LAUNCH CHAT MODE":"questions"}
         self.launchers=["roslaunch qbo_brain default_state.launch"]
         #self.launchers=[]
         
@@ -151,12 +151,47 @@ class default(CommonQboState):
         #Face Tracking
         rospy.Subscriber("/qbo_face_tracking/face_pos_and_dist", FacePosAndDist, face_pos_callback)
         
+        speak_this("default mode is active")
+
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
                 
+        speak_this("Exiting default mode")
+
         subscribe.unregister()
         kill_all_process(pids)
+        rospy.loginfo("NextState: "+self.next_state)
+        return self.next_state
+
+class questions(CommonQboState):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['stop',''])
+        self.state="Questions"
+        self.input_values={"STOP CHAT MODE":"stop", "STOP STATE MACHINE":"exit"}
+        self.launchers=["roslaunch qbo_questions qbo_questions.launch"]
+        #self.launchers=[]
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing: State '+self.state)
+        self.next_state=""
+        pids=run_all_process(self.launchers)
+
+        #Subscribe to topics
+        #Listeners
+        subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+
+        speak_this("Chat mode is active")
+
+        while self.next_state=="" and not rospy.is_shutdown():
+                time.sleep(0.2)
+                #rospy.loginfo("Waiting sentence")
+
+        speak_this("Exiting chat mode")
+
+        subscribe.unregister()
+        kill_all_process(pids)
+        time.sleep(5.0)
         rospy.loginfo("NextState: "+self.next_state)
         return self.next_state
 
@@ -172,13 +207,16 @@ class musicplayer(CommonQboState):
         self.next_state=""
         pids=run_all_process(self.launchers)
         subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+
+        speak_this("Music player is active")
+
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
                 
         speak_this("Exiting music player")
         
-	subscribe.unregister()
+        subscribe.unregister()
         kill_all_process(pids)
         rospy.loginfo("NextState:"+self.next_state)
         return self.next_state
@@ -207,7 +245,7 @@ class phone(CommonQboState):
                 
         speak_this("Phone services are shut down")
 
-	subscribe.unregister()
+        subscribe.unregister()
         kill_all_process(pids)
         rospy.loginfo("NextState:"+self.next_state)
         #run_process("roslaunch qbo_audio_control audio_control_listener.launch")
@@ -278,9 +316,10 @@ def main():
     sm = smach.StateMachine(outcomes=['exit'])
 
     with sm:
-        smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver', '':'exit'})
+        smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver','questions':'questions','':'exit'})
         smach.StateMachine.add('music_player', musicplayer(), transitions={'stop':'default', 'phone':'phoneserver', '':'exit'})
         smach.StateMachine.add('phoneserver', phone(), transitions={'stop':'default', '':'exit'})
+        smach.StateMachine.add('questions', questions(), transitions={'stop':'default', '':'exit'})
 
 
     sis= smach_ros.IntrospectionServer('server_name',sm,'/SM_ROOT')
