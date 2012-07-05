@@ -131,9 +131,9 @@ class CommonQboState(smach.State):
 #Define default state
 class default(CommonQboState):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['mplayer','phone','questions',''])
+        smach.State.__init__(self, outcomes=['mplayer','phone','questions','webi',''])
         self.state="Default"
-        self.input_values={"RUN MUSIC PLAYER":"mplayer", "RUN PHONE SERVICES":"phone", "LAUNCH CHAT MODE":"questions"}
+        self.input_values={"RUN MUSIC PLAYER":"mplayer", "RUN PHONE SERVICES":"phone", "RUN WEB INTERFACE":"webi","LAUNCH CHAT MODE":"questions"}
         self.launchers=["roslaunch qbo_brain default_state.launch"]
         #self.launchers=[]
         
@@ -156,12 +156,12 @@ class default(CommonQboState):
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
-                
-        speak_this("Exiting default mode")
+        if not rospy.is_shutdown():
+            speak_this("Exiting default mode")
+            subscribe.unregister()
+            rospy.loginfo("NextState: "+self.next_state)
 
-        subscribe.unregister()
         kill_all_process(pids)
-        rospy.loginfo("NextState: "+self.next_state)
         return self.next_state
 
 class questions(CommonQboState):
@@ -169,7 +169,41 @@ class questions(CommonQboState):
         smach.State.__init__(self, outcomes=['stop',''])
         self.state="Questions"
         self.input_values={"STOP CHAT MODE":"stop", "STOP STATE MACHINE":"exit"}
-        self.launchers=["roslaunch qbo_questions qbo_questions.launch"]
+        self.launchers=["roslaunch qbo_questions qbo_questions_ES.launch"]
+        #self.launchers=[]
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing: State '+self.state)
+        self.next_state=""
+        
+        speak_this("Chat mode is active")
+	time.sleep(4)
+	pids=run_all_process(self.launchers)
+
+        #Subscribe to topics
+        #Listeners
+        subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+
+        while self.next_state=="" and not rospy.is_shutdown():
+                time.sleep(0.2)
+                #rospy.loginfo("Waiting sentence")
+
+        if not rospy.is_shutdown():
+            speak_this("Exiting chat mode")
+            subscribe.unregister()
+            rospy.loginfo("NextState: "+self.next_state)
+ 
+        kill_all_process(pids)
+        time.sleep(5.0)
+        return self.next_state
+
+
+class webi(CommonQboState):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['stop',''])
+        self.state="Webi"
+        self.input_values={"STOP WEB INTERFACE":"stop", "STOP STATE MACHINE":"exit"}
+        self.launchers=["roslaunch qbo_webi qbo_webi.launch"]
         #self.launchers=[]
 
     def execute(self, userdata):
@@ -181,18 +215,29 @@ class questions(CommonQboState):
         #Listeners
         subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
 
-        speak_this("Chat mode is active")
+        speak_this("Q BO WEB interface is active")
 
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
-
-        speak_this("Exiting chat mode")
-
-        subscribe.unregister()
+        
         kill_all_process(pids)
+
+        if not rospy.is_shutdown():
+            changeLang = rospy.ServiceProxy("/qbo_talk/festival_language", Text2Speach)
+	    changeLang("cmu_us_awb_arctic_clunits")
+            speak_this("Stopping Q B O Web interface")
+            subscribe.unregister()
+            rospy.loginfo("NextState: "+self.next_state)
+        else:
+            rospy.init_node('qbo_brain')
+            #We set the deafult voice to english
+            changeLang = rospy.ServiceProxy("/qbo_talk/festival_language", Text2Speach)
+            changeLang("cmu_us_awb_arctic_clunits")
+
+
+
         time.sleep(5.0)
-        rospy.loginfo("NextState: "+self.next_state)
         return self.next_state
 
 class musicplayer(CommonQboState):
@@ -214,11 +259,12 @@ class musicplayer(CommonQboState):
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
                 
-        speak_this("Exiting music player")
+        if not rospy.is_shutdown():
+            speak_this("Exiting music player")
+            subscribe.unregister()
+            rospy.loginfo("NextState: "+self.next_state)
         
-        subscribe.unregister()
         kill_all_process(pids)
-        rospy.loginfo("NextState:"+self.next_state)
         return self.next_state
         
 class phone(CommonQboState):
@@ -245,9 +291,12 @@ class phone(CommonQboState):
                 
         speak_this("Phone services are shut down")
 
-        subscribe.unregister()
+	if not rospy.is_shutdown():
+            speak_this("Exiting music player")
+            subscribe.unregister()
+            rospy.loginfo("NextState:"+self.next_state)
+
         kill_all_process(pids)
-        rospy.loginfo("NextState:"+self.next_state)
         #run_process("roslaunch qbo_audio_control audio_control_listener.launch")
         return self.next_state
 
@@ -316,10 +365,11 @@ def main():
     sm = smach.StateMachine(outcomes=['exit'])
 
     with sm:
-        smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver','questions':'questions','':'exit'})
+        smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver','webi':'webi','questions':'questions','':'exit'})
         smach.StateMachine.add('music_player', musicplayer(), transitions={'stop':'default', 'phone':'phoneserver', '':'exit'})
         smach.StateMachine.add('phoneserver', phone(), transitions={'stop':'default', '':'exit'})
         smach.StateMachine.add('questions', questions(), transitions={'stop':'default', '':'exit'})
+        smach.StateMachine.add('webi', webi(), transitions={'stop':'default', '':'exit'})
 
 
     sis= smach_ros.IntrospectionServer('server_name',sm,'/SM_ROOT')
