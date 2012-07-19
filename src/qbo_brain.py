@@ -90,7 +90,7 @@ class CommonQboState(smach.State):
        
 
 
-        if self.state=="Default" and sentence == "HALT YOU MOVE":
+        if self.state=="Default" and sentence == "HALT YOU ARE MOVE":
                 
                 if robot_model.random_move:
                         run_process("rosnode kill /qbo_random_move")
@@ -142,6 +142,13 @@ class default(CommonQboState):
         self.next_state=""
         pids=run_all_process(self.launchers)
 
+        #Check if qbo_listen is alive
+        rosnode_list = runCmdOutput("rosnode list")
+        if rosnode_list.find("qbo_listen") == -1:
+            run_process("rosnode kill /qbo_audio_control")
+            run_process("roslaunch qbo_listen voice_recognizer.launch")   
+
+
         #Subscribe to topics
         #Listeners
         subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
@@ -169,7 +176,7 @@ class questions(CommonQboState):
         smach.State.__init__(self, outcomes=['stop',''])
         self.state="Questions"
         self.input_values={"STOP CHAT MODE":"stop", "STOP STATE MACHINE":"exit"}
-        self.launchers=["roslaunch qbo_questions qbo_questions_ES.launch"]
+        self.launchers=["roslaunch qbo_questions qbo_questions_EN.launch"]
         #self.launchers=[]
 
     def execute(self, userdata):
@@ -177,8 +184,8 @@ class questions(CommonQboState):
         self.next_state=""
         
         speak_this("Chat mode is active")
-	time.sleep(4)
-	pids=run_all_process(self.launchers)
+        time.sleep(4)
+    	pids=run_all_process(self.launchers)
 
         #Subscribe to topics
         #Listeners
@@ -292,7 +299,7 @@ class phone(CommonQboState):
         speak_this("Phone services are shut down")
 
 	if not rospy.is_shutdown():
-            speak_this("Exiting music player")
+            speak_this("Exiting phone services")
             subscribe.unregister()
             rospy.loginfo("NextState:"+self.next_state)
 
@@ -340,6 +347,47 @@ def check_face_object_balance():
         rospy.set_param("/qbo_stereo_selector/move_head", True)
         #print "OBJECT RECOGNITION MODE"
 
+
+def runCmdOutput(cmd, timeout=None):
+    '''
+    Will execute a command, read the output and return it back.
+    
+    @param cmd: command to execute
+    @param timeout: process timeout in seconds
+    @return: a tuple of three: first stdout, then stderr, then exit code
+    @raise OSError: on missing command or if a timeout was reached
+    '''
+
+    ph_out = None # process output
+    ph_err = None # stderr
+    ph_ret = None # return code
+
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+   
+        # if timeout is not set wait for process to complete
+    if not timeout:
+        ph_ret = p.wait()
+    else:
+        fin_time = time.time() + timeout
+        while p.poll() == None and fin_time > time.time():
+            time.sleep(1)
+
+        # if timeout reached, raise an exception
+        if fin_time < time.time():
+
+            # starting 2.6 subprocess has a kill() method which is preferable
+            # p.kill()
+            os.kill(p.pid, signal.SIGKILL)
+            raise OSError("Process timeout has been reached")
+
+        ph_ret = p.returncode
+
+      #  print "PID: "+str(p.pid)
+    ph_out, ph_err = p.communicate()
+
+    return ph_out
+
         
 def main():
     global client_speak
@@ -357,9 +405,6 @@ def main():
     
     #Initialize robot model
     robot_model = RobotModel()
- 
-    
-    
     
     # Create a SMACH state machine
     sm = smach.StateMachine(outcomes=['exit'])
