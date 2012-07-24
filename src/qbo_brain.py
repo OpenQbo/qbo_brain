@@ -37,7 +37,6 @@ import smach_ros
 import signal
 import subprocess
 import time
-
 global robot_model
 
 #ROS Publishers
@@ -90,7 +89,7 @@ class CommonQboState(smach.State):
        
 
 
-        if self.state=="Default" and sentence == "HALT YOU ARE MOVE":
+        if self.state=="Default" and sentence == "HALT YOU MOVE":
                 
                 if robot_model.random_move:
                         run_process("rosnode kill /qbo_random_move")
@@ -120,9 +119,6 @@ class CommonQboState(smach.State):
                 speak_this("Yes, I can follow you")
                 rospy.follow_face = True
                 rospy.set_param("/qbo_face_following/move_base", True)
-                        
-
-
         try:
             self.next_state=self.input_values[data.msg]
         except:
@@ -142,12 +138,18 @@ class default(CommonQboState):
         self.next_state=""
         pids=run_all_process(self.launchers)
 
-        #Check if qbo_listen is alive
+        #Change language to english
+        changeLang = rospy.ServiceProxy("/qbo_talk/festival_language", Text2Speach)
+        changeLang("cmu_us_awb_arctic_clunits")
+
+
+       
+	#Check if qbo_listen is down
         rosnode_list = runCmdOutput("rosnode list")
         if rosnode_list.find("qbo_listen") == -1:
-            run_process("rosnode kill /qbo_audio_control")
-            run_process("roslaunch qbo_listen voice_recognizer.launch")   
-
+             run_process("rosnode kill /qbo_audio_control")
+             time.sleep(2)
+             run_process("roslaunch qbo_listen voice_recognizer.launch")
 
         #Subscribe to topics
         #Listeners
@@ -184,8 +186,8 @@ class questions(CommonQboState):
         self.next_state=""
         
         speak_this("Chat mode is active")
-        time.sleep(4)
-    	pids=run_all_process(self.launchers)
+	time.sleep(4)
+	pids=run_all_process(self.launchers)
 
         #Subscribe to topics
         #Listeners
@@ -299,7 +301,6 @@ class phone(CommonQboState):
         speak_this("Phone services are shut down")
 
 	if not rospy.is_shutdown():
-            speak_this("Exiting phone services")
             subscribe.unregister()
             rospy.loginfo("NextState:"+self.next_state)
 
@@ -348,6 +349,7 @@ def check_face_object_balance():
         #print "OBJECT RECOGNITION MODE"
 
 
+
 def runCmdOutput(cmd, timeout=None):
     '''
     Will execute a command, read the output and return it back.
@@ -383,10 +385,13 @@ def runCmdOutput(cmd, timeout=None):
 
         ph_ret = p.returncode
 
-      #  print "PID: "+str(p.pid)
+  #  print "PID: "+str(p.pid)
+
     ph_out, ph_err = p.communicate()
 
+
     return ph_out
+
 
         
 def main():
@@ -405,6 +410,9 @@ def main():
     
     #Initialize robot model
     robot_model = RobotModel()
+ 
+    
+    
     
     # Create a SMACH state machine
     sm = smach.StateMachine(outcomes=['exit'])
