@@ -15,6 +15,7 @@
   <depend package="qbo_face_msgs"/>
   <depend package="smach_ros" />
   <depend package="smach" />
+  <depend package="std_msgs" />
 </package>
 
 

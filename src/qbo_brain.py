@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# coding: utf-8
 #
 # Software License Agreement (GPLv2 License)
 #
@@ -31,7 +32,9 @@ from qbo_talk.srv import Text2Speach
 
 from sensor_msgs.msg import Image
 from qbo_face_msgs.msg import FacePosAndDist
+from std_msgs.msg import String
 
+import json
 import smach
 import smach_ros
 import signal
@@ -41,8 +44,11 @@ global robot_model
 
 #ROS Publishers
 global client_speak
-
+global lang_pub
 global face_detected
+
+global lang
+global language
 
 def run_process(command = ""):
 
@@ -77,19 +83,21 @@ class CommonQboState(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=["exit"])
         self.state="none"
-        self.input_values={"STOP STATE MACHINE":"exit"}
+        self.input_values={language["STOP STATE MACHINE"]:"exit"}
         self.next_state=""
         self.launchers=[]
+        self.subscribe = None
 
     def listen_callback(self, data):
         sentence = data.msg
         rospy.loginfo("Listened: |"+sentence+"|")
         global robot_model
         global face_detected
-       
+        global language
+        global lang
+        global lang_pub
 
-
-        if self.state=="Default" and sentence == "HALT YOU MOVE":
+        if self.state=="Default" and sentence == language["HALT YOU MOVE"]:
                 
                 if robot_model.random_move:
                         run_process("rosnode kill /qbo_random_move")
@@ -97,53 +105,75 @@ class CommonQboState(smach.State):
                 
                 rospy.set_param("/qbo_face_following/move_base", False)
                 rospy.follow_face = False
-                speak_this("Ok. I stopped moving.")
+                speak_this(language["OK. I STOPPED MOVING"])
                 return
  
         if self.state=="Default" and not face_detected:
                 print "IGNORING PREVIOUS SENTENCE"
                 return
-
-        
-        if self.state=="Default" and sentence == "WHY DON'T YOU MOVE A ROUND" and not robot_model.random_move:
+        if self.state=="Default" and sentence == language["WHY DON'T YOU MOVE A ROUND"] and not robot_model.random_move:
                 run_process("rosrun qbo_random_move qbo_random_move_face_recog.py")
                 robot_model.random_move = True
-                speak_this("OK. I'm taking a walk")
+                speak_this(language["OK. I'M TAKING A WALK"])
         
-
-        elif self.state == "Default" and sentence == "CAN YOU FOLLOW ME" and not robot_model.follow_face:
+        elif self.state == "Default" and sentence == language["CAN YOU FOLLOW ME"] and not robot_model.follow_face:
                 if robot_model.random_move:
                         run_process("rosnode kill /qbo_random_move")
                         robot_model.random_move = False
                 
-                speak_this("Yes, I can follow you")
+                speak_this(language["YES, I CAN FOLLOW YOU"])
                 rospy.follow_face = True
                 rospy.set_param("/qbo_face_following/move_base", True)
+
+        elif self.state == "Default" and lang == "en" and sentence == "CAN YOU SPEAK SPANISH":
+            #CHANGE LANGUAGE
+            self.subscribe.unregister()
+            self.subscribe=rospy.Subscriber("/listen/es_default", Listened, self.listen_callback)	
+            lang_pub.publish(String("es"))
+            loadDictionary("es")
+            lang="es"
+            rospy.set_param("/system_lang", "es")
+            speak_this("SI QUE PUEDO HABLAR ESPAÑOL")
+  	
+        elif self.state == "Default" and lang == "es" and sentence == "PUEDES HABLAR INGLES":
+            #CHANGE LANGUAGE
+            self.subscribe.unregister()
+            self.subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+            lang_pub.publish(String("en"))
+            loadDictionary("en")
+            lang="en"
+            rospy.set_param("/system_lang", "en")
+            speak_this("YES, I CAN SPEAK ENGLISH")        
+
         try:
-            self.next_state=self.input_values[data.msg]
+            #self.next_state=self.input_values[data.msg]
+            lang_label = [key for key, value in language.iteritems() if value == data.msg][0]
+            self.next_state=self.input_values[lang_label]
         except:
             rospy.loginfo("Sentence not found")
             
 #Define default state
 class default(CommonQboState):
     def __init__(self):
+        global language
         smach.State.__init__(self, outcomes=['mplayer','phone','questions','webi',''])
         self.state="Default"
-        self.input_values={"RUN MUSIC PLAYER":"mplayer", "RUN PHONE SERVICES":"phone", "RUN WEB INTERFACE":"webi","LAUNCH CHAT MODE":"questions"}
+
+        self.input_values={"RUN MUSIC PLAYER":"mplayer", "RUN PHONE SERVICES":"phone","RUN WEB INTERFACE":"webi","LAUNCH CHAT MODE":"questions"}
         self.launchers=["roslaunch qbo_brain default_state.launch"]
         #self.launchers=[]
         
     def execute(self, userdata): 
+        global lang
+
         rospy.loginfo('Executing: State '+self.state)
         self.next_state=""
         pids=run_all_process(self.launchers)
-
+        
         #Change language to english
-        changeLang = rospy.ServiceProxy("/qbo_talk/festival_language", Text2Speach)
-        changeLang("cmu_us_awb_arctic_clunits")
+#        changeLang = rospy.ServiceProxy("/qbo_talk/festival_language", Text2Speach)
+#        changeLang("cmu_us_awb_arctic_clunits")
 
-
-       
 	#Check if qbo_listen is down
         rosnode_list = runCmdOutput("rosnode list")
         if rosnode_list.find("qbo_listen") == -1:
@@ -153,21 +183,21 @@ class default(CommonQboState):
 
         #Subscribe to topics
         #Listeners
-        subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+        self.subscribe=rospy.Subscriber("/listen/"+lang+"_default", Listened, self.listen_callback)
         
         #Stereo Selector
         rospy.Subscriber("/qbo_stereo_selector/object", Image, stereo_selector_callback)    
         #Face Tracking
         rospy.Subscriber("/qbo_face_tracking/face_pos_and_dist", FacePosAndDist, face_pos_callback)
         
-        speak_this("default mode is active")
+        speak_this(language["DEFAULT MODE IS ACTIVE"])
 
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
         if not rospy.is_shutdown():
-            speak_this("Exiting default mode")
-            subscribe.unregister()
+            speak_this(language["EXITING DEFAULT MODE"])
+            self.subscribe.unregister()
             rospy.loginfo("NextState: "+self.next_state)
 
         kill_all_process(pids)
@@ -177,35 +207,35 @@ class questions(CommonQboState):
     def __init__(self):
         smach.State.__init__(self, outcomes=['stop',''])
         self.state="Questions"
-        self.input_values={"STOP CHAT MODE":"stop", "STOP STATE MACHINE":"exit"}
-        self.launchers=["roslaunch qbo_questions qbo_questions_EN.launch"]
+        self.input_values={"STOP CHAT MODE":"stop","STOP STATE MACHINE":"exit"}
+        self.launchers=["roslaunch qbo_questions qbo_questions.launch"]
         #self.launchers=[]
 
     def execute(self, userdata):
+        global lang
         rospy.loginfo('Executing: State '+self.state)
         self.next_state=""
         
-        speak_this("Chat mode is active")
+        speak_this(language["CHAT MODE IS ACTIVE"])
 	time.sleep(4)
 	pids=run_all_process(self.launchers)
 
         #Subscribe to topics
         #Listeners
-        subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+        self.subscribe=rospy.Subscriber("/listen/"+lang+"_default", Listened, self.listen_callback)
 
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
 
         if not rospy.is_shutdown():
-            speak_this("Exiting chat mode")
-            subscribe.unregister()
+            speak_this(language["EXITING CHAT MODE"])
+            self.subscribe.unregister()
             rospy.loginfo("NextState: "+self.next_state)
  
         kill_all_process(pids)
         time.sleep(5.0)
         return self.next_state
-
 
 class webi(CommonQboState):
     def __init__(self):
@@ -216,35 +246,31 @@ class webi(CommonQboState):
         #self.launchers=[]
 
     def execute(self, userdata):
+        global lang
         rospy.loginfo('Executing: State '+self.state)
         self.next_state=""
         pids=run_all_process(self.launchers)
 
         #Subscribe to topics
         #Listeners
-        subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+        self.subscribe=rospy.Subscriber("/listen/"+lang+"_default", Listened, self.listen_callback)
 
-        speak_this("Q BO WEB interface is active")
+        speak_this(language["QBO WEB INTERFACE IS ACTIVE"])
 
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
         
-        kill_all_process(pids)
+
 
         if not rospy.is_shutdown():
             changeLang = rospy.ServiceProxy("/qbo_talk/festival_language", Text2Speach)
 	    changeLang("cmu_us_awb_arctic_clunits")
-            speak_this("Stopping Q B O Web interface")
-            subscribe.unregister()
+            speak_this(language["STOPPING QBO WEB INTERFACE"])
+            self.subscribe.unregister()
             rospy.loginfo("NextState: "+self.next_state)
-        else:
-            rospy.init_node('qbo_brain')
-            #We set the deafult voice to english
-            changeLang = rospy.ServiceProxy("/qbo_talk/festival_language", Text2Speach)
-            changeLang("cmu_us_awb_arctic_clunits")
 
-
+        kill_all_process(pids)
 
         time.sleep(5.0)
         return self.next_state
@@ -253,24 +279,25 @@ class musicplayer(CommonQboState):
     def __init__(self):
         smach.State.__init__(self, outcomes=['stop','phone', ''])
         self.state="Music Player"
-        self.input_values={"STOP MUSIC PLAYER":"stop", "START PHONE SERVICES":"phone","STOP STATE MACHINE":"exit"}
+        self.input_values={"STOP MUSIC PLAYER":"stop", "START PHONE SERVICES":"phone", "STOP STATE MACHINE":"exit"}
         self.launchers=["roslaunch qbo_music_player hand_gesture_node.launch"]
         
-    def execute(self, userdata): 
+    def execute(self, userdata):
+        global lang 
         rospy.loginfo('Executing state'+self.state)
         self.next_state=""
         pids=run_all_process(self.launchers)
-        subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+        self.subscribe=rospy.Subscriber("/listen/"+lang+"_default", Listened, self.listen_callback)
 
-        speak_this("Music player is active")
+        speak_this(language["MUSIC PLAYER IS ACTIVE"])
 
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
                 
         if not rospy.is_shutdown():
-            speak_this("Exiting music player")
-            subscribe.unregister()
+            speak_this(language["EXITING MUSIC PLAYER"])
+            self.subscribe.unregister()
             rospy.loginfo("NextState: "+self.next_state)
         
         kill_all_process(pids)
@@ -285,23 +312,24 @@ class phone(CommonQboState):
         self.launchers=["rosrun qbo_http_api_login qbo_http_api_login.py > /home/qboblue/http_log.txt", "rosrun qbo_mjpeg_server mjpeg_server"]
 
     def execute(self, userdata): 
+        global lang
         rospy.loginfo('Executing state'+self.state)
         self.next_state=""
         pids=run_all_process(self.launchers)
         #run_process("roslaunch qbo_audio_control audio_control_sip.launch")
-        subscribe=rospy.Subscriber("/listen/en_default", Listened, self.listen_callback)
+        self.subscribe=rospy.Subscriber("/listen/"+lang+"_default", Listened, self.listen_callback)
    
 
-        speak_this("Phone services are active")
+        speak_this(language["PHONE SERVICES ARE ACTIVE"])
     
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
                 
-        speak_this("Phone services are shut down")
+        speak_this(language["PHONE SERVICES ARE SHUT DOWN"])
 
 	if not rospy.is_shutdown():
-            subscribe.unregister()
+            self.subscribe.unregister()
             rospy.loginfo("NextState:"+self.next_state)
 
         kill_all_process(pids)
@@ -348,8 +376,6 @@ def check_face_object_balance():
         rospy.set_param("/qbo_stereo_selector/move_head", True)
         #print "OBJECT RECOGNITION MODE"
 
-
-
 def runCmdOutput(cmd, timeout=None):
     '''
     Will execute a command, read the output and return it back.
@@ -392,12 +418,23 @@ def runCmdOutput(cmd, timeout=None):
 
     return ph_out
 
+def loadDictionary(lang_sym):
+    global language
+    
+    lang_path=roslib.packages.get_pkg_dir('qbo_brain')+"/config/lang/"
+    #Load default dict
+    fp=open(lang_path+lang_sym+'.txt','r')
+    language=json.load(fp,'utf-8')
+    fp.close()
 
         
 def main():
     global client_speak
+    global lang_pub
     global robot_model
     global face_detected 
+    global language
+    global lang
 
     face_detected = False
    
@@ -407,15 +444,27 @@ def main():
     client_speak = rospy.ServiceProxy("/qbo_talk/festival_say_no_wait", Text2Speach)
     rospy.loginfo("Waiting for the qbo_talk service to be active")
     rospy.wait_for_service('/qbo_talk/festival_say_no_wait')
-    
+   
+
+    lang_pub = rospy.Publisher('/system_lang', String)
+
+
+    lang = 'en'
+
+    if rospy.has_param("/system_lang"):
+         lang = rospy.get_param("/system_lang")
+
+    rospy.loginfo("Language active: "+lang)
+ 
+    loadDictionary(lang)
+
     #Initialize robot model
     robot_model = RobotModel()
- 
-    
-    
     
     # Create a SMACH state machine
     sm = smach.StateMachine(outcomes=['exit'])
+
+    
 
     with sm:
         smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver','webi':'webi','questions':'questions','':'exit'})
@@ -428,7 +477,7 @@ def main():
     sis= smach_ros.IntrospectionServer('server_name',sm,'/SM_ROOT')
     sis.start()
 
-    speak_this("Q b o brain is active")
+    speak_this(language["QBO BRAIN IS ACTIVE"])
 
     # Execute SMACH plan
     rospy.loginfo("State machine launched")
