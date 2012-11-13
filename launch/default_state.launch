@@ -11,7 +11,7 @@
           <param name="/qbo_object_recognition/input_image_topic" value="/qbo_stereo_selector/object"/> 
 	 
          <!-- <node name="orbit_demo" pkg="qbo_object_recognition" type="orbit_demo"/> -->
-         <node name="orbit_demo_lang" pkg="qbo_object_recognition" type="orbit_demo_lang"/>
+         <node name="orbit_demo_lang" pkg="qbo_object_recognition" type="orbit_demo"/>
 	 
 <!-- FACE RECOGNIZER DEMO -->
 
