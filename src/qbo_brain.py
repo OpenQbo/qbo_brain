@@ -97,7 +97,7 @@ class CommonQboState(smach.State):
         global lang
         global lang_pub
 
-        if self.state=="Default" and sentence == language["HALT YOU MOVE"]:
+        if self.state=="Default" and sentence == language["HALT YOU ARE MOVE"]:
                 
                 if robot_model.random_move:
                         run_process("rosnode kill /qbo_random_move")
@@ -111,7 +111,7 @@ class CommonQboState(smach.State):
         if self.state=="Default" and not face_detected:
                 print "IGNORING PREVIOUS SENTENCE"
                 return
-        if self.state=="Default" and sentence == language["WHY DON'T YOU MOVE A ROUND"] and not robot_model.random_move:
+        if self.state=="Default" and sentence == language["WHY DON'T YOU MOVE AROUND"] and not robot_model.random_move:
                 run_process("rosrun qbo_random_move qbo_random_move_face_recog.py")
                 robot_model.random_move = True
                 speak_this(language["OK. I'M TAKING A WALK"])
