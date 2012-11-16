@@ -50,6 +50,8 @@ global face_detected
 global lang
 global language
 
+global active_check_face_object
+
 def run_process(command = ""):
 
     if command != "":
@@ -75,7 +77,7 @@ def speak_this(text):
 class RobotModel:
     def __init__(self):
         self.last_object_time = rospy.Time.now()
-        self.time_threshold = 0.4
+        self.time_threshold = 0.7
         self.random_move = False
         self.follow_face = False
 
@@ -156,6 +158,7 @@ class CommonQboState(smach.State):
 class default(CommonQboState):
     def __init__(self):
         global language
+        
         smach.State.__init__(self, outcomes=['mplayer','phone','questions','webi',''])
         self.state="Default"
 
@@ -165,6 +168,9 @@ class default(CommonQboState):
         
     def execute(self, userdata): 
         global lang
+        global active_check_face_object
+
+        active_check_face_object = True
 
         rospy.loginfo('Executing: State '+self.state)
         self.next_state=""
@@ -195,11 +201,14 @@ class default(CommonQboState):
         while self.next_state=="" and not rospy.is_shutdown():
                 time.sleep(0.2)
                 #rospy.loginfo("Waiting sentence")
+        
+
         if not rospy.is_shutdown():
             speak_this(language["EXITING DEFAULT MODE"])
             self.subscribe.unregister()
             rospy.loginfo("NextState: "+self.next_state)
-
+  
+        active_check_face_object = False
         kill_all_process(pids)
         return self.next_state
 
@@ -341,7 +350,7 @@ def stereo_selector_callback(data):
     
     robot_model.last_object_time = rospy.Time.now()
     
-    check_face_object_balance()
+#    check_face_object_balance()
        
 def face_pos_callback(data):
     global robot_model
@@ -350,31 +359,46 @@ def face_pos_callback(data):
 
     face_detected = data.face_detected
  
-    check_face_object_balance()
+#    check_face_object_balance()
     
 
-def check_face_object_balance():
+def check_face_object_balance(event):
     global robot_model
+
+    global active_check_face_object
+
+    if active_check_face_object == False:
+        return  
+      
     
     diff_time = rospy.Time.now() - robot_model.last_object_time
    
+    '''   
     if rospy.has_param("/qbo_stereo_selector/move_head"):
         object_active = rospy.get_param("/qbo_stereo_selector/move_head")
     else:
         object_active = False
 
+    ''' 
+     
+    object_active = False
+    try: 
+       object_active = rospy.get_param("/qbo_stereo_selector/move_head")
+    except Exception:
+       print "No move head parameter yet"  
+    
 
     if object_active and diff_time.to_sec()>robot_model.time_threshold:
         #Need to activate face mode
         rospy.set_param("/qbo_stereo_selector/move_head", False)
         rospy.set_param("/qbo_face_following/move_head", True)
-        #print "FACE RECOGNITION MODE"
+        print "FACE RECOGNITION MODE"
          
     if (not object_active) and diff_time.to_sec()<robot_model.time_threshold:
         #Need to activate object_mode
         rospy.set_param("/qbo_face_following/move_head", False)
         rospy.set_param("/qbo_stereo_selector/move_head", True)
-        #print "OBJECT RECOGNITION MODE"
+        print "OBJECT RECOGNITION MODE"
 
 def runCmdOutput(cmd, timeout=None):
     '''
@@ -435,6 +459,9 @@ def main():
     global face_detected 
     global language
     global lang
+    global active_check_face_object
+
+    active_check_face_object = False
 
     face_detected = False
    
@@ -463,8 +490,10 @@ def main():
     
     # Create a SMACH state machine
     sm = smach.StateMachine(outcomes=['exit'])
+ 
 
-    
+    #Timer for the check_face_object_callback
+    rospy.Timer(rospy.Duration(0.2), check_face_object_balance)
 
     with sm:
         smach.StateMachine.add('default', default(), transitions={'mplayer':'music_player','phone':'phoneserver','webi':'webi','questions':'questions','':'exit'})
